@@ -8,13 +8,13 @@ TARGET="nvidia/nvidia-v100"
 
 RPC_WORKERS=1
 NUM_TRIALS=2000
-CMD="tvm.meta_schedule.testing.tune_te_meta_schedule"
+CMD="tvm.meta_schedule.testing.tune_te_meta_schedule_cm"
 
 
 run () {
     name=$1
     LOG_ID=$2
-    LOG_DIR=$HOME/logs/ms-cuda-$LOG_ID/
+    LOG_DIR=$HOME/logs/ms-cm-cuda-$LOG_ID/
     WORK_DIR=$LOG_DIR/$name/
     mkdir -p $LOG_DIR
     mkdir -p $WORK_DIR
