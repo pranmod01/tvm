@@ -42,7 +42,42 @@ def _get_network(
 
     mod: IRModule
 
-    if name in [
+    if name in ["yolov3", "mobileet_v2"]:
+        import torchbenchmark  # pylint:disable=import-error
+        import torch
+
+        Model = torchbenchmark.load_model_by_name(name)
+        torch_model = Model(test="eval", device="cpu")
+        input_shape = list(torch_model.example_inputs[0].shape)
+        input_data = dtype = "float32"
+        input_data = torch.randn(input_shape).type(  # pylint: disable=no-member
+            {
+                "float32": torch.float32,  # pylint: disable=no-member
+            }[dtype]
+        )
+        model = torch_model.model
+        model.eval()
+        scripted_model = torch.jit.trace(model, input_data).eval()
+        input_name = "input0"
+        shape_list = [(input_name, input_shape)]
+        mod, params = relay.frontend.from_pytorch(scripted_model, shape_list)
+        with tvm.transform.PassContext(opt_level=3):
+            mod = tvm.transform.Sequential(
+                [
+                    relay.transform.RemoveUnusedFunctions(),
+                    relay.transform.ConvertLayout(
+                        {
+                            "nn.conv2d": ["NHWC", "default"],
+                            "nn.conv3d": ["NDHWC", "default"],
+                            "nn.max_pool2d": ["NHWC", "default"],
+                            "nn.avg_pool2d": ["NHWC", "default"],
+                        }
+                    ),
+                ]
+            )(mod)
+        inputs = (input_name, input_shape, dtype)
+
+    elif name in [
         "resnet_18",
         "resnet_50",
         "wide_resnet_50",
